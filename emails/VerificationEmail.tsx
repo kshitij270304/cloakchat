@@ -62,5 +62,3 @@ export default function VerificationEmail({ username, otp }: VerificationEmailPr
     </Html>
   );
 }
-
-// imported from react-email site
