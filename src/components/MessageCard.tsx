@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React from 'react';
 import axios, { AxiosError } from 'axios';
 import dayjs from 'dayjs';
 import { X } from 'lucide-react';
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { ApiResponse } from '@/types/ApiResponse';
 
 type MessageCardProps = {
@@ -27,26 +28,18 @@ type MessageCardProps = {
 };
 
 export function MessageCard({ message, onMessageDelete }: MessageCardProps) {
-  const { toast } = useToast();
-
   const handleDeleteConfirm = async () => {
     try {
       const response = await axios.delete<ApiResponse>(
         `/api/delete-message/${message._id}`
       );
-      toast({
-        title: response.data.message,
-      });
+      toast.success(response.data.message); // ✅ sonner success toast
       onMessageDelete(String(message._id));
-
     } catch (error) {
       const axiosError = error as AxiosError<ApiResponse>;
-      toast({
-        title: 'Error',
-        description:
-          axiosError.response?.data.message ?? 'Failed to delete message',
-        variant: 'destructive',
-      });
+      toast.error(
+        axiosError.response?.data.message ?? 'Failed to delete message'
+      ); // ✅ sonner error toast
     } 
   };
 
@@ -85,10 +78,7 @@ export function MessageCard({ message, onMessageDelete }: MessageCardProps) {
         </div>
       </CardHeader>
       <CardContent></CardContent>
+      <Toaster /> {/* ✅ make sure Toaster is rendered */}
     </Card>
   );
-}
-
-function useToast(): { toast: any; } {
-    throw new Error('Function not implemented.');
 }

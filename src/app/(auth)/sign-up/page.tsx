@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useDebounceCallback } from 'usehooks-ts';
+import { useDebounce } from 'use-debounce';
 import * as z from 'zod';
 
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster, toast } from 'sonner';
 import axios, { AxiosError } from 'axios';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -28,13 +28,11 @@ export default function SignUpForm() {
   const [usernameMessage, setUsernameMessage] = useState('');
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const debouncedUsername = useDebounceCallback((value: string) => {
-  setUsername(value);
-}, 300);
 
+  // ✅ Correct debounce usage (array destructuring)
+  const [debouncedUsername] = useDebounce(username, 300);
 
   const router = useRouter();
-  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
@@ -49,10 +47,10 @@ export default function SignUpForm() {
     const checkUsernameUnique = async () => {
       if (debouncedUsername) {
         setIsCheckingUsername(true);
-        setUsernameMessage(''); // Reset message
+        setUsernameMessage('');
         try {
           const response = await axios.get<ApiResponse>(
-            `/api/check-username-unique?username=${debouncedUsername}`
+            `/api/check-username-unique?username=${encodeURIComponent(debouncedUsername)}`
           );
           setUsernameMessage(response.data.message);
         } catch (error) {
@@ -73,35 +71,25 @@ export default function SignUpForm() {
     try {
       const response = await axios.post<ApiResponse>('/api/sign-up', data);
 
-      toast({
-        title: 'Success',
-        description: response.data.message,
-      });
+      toast.success(response.data.message);
 
       router.replace(`/verify/${username}`);
-
-      setIsSubmitting(false);
     } catch (error) {
       console.error('Error during sign-up:', error);
-
       const axiosError = error as AxiosError<ApiResponse>;
+      const errorMessage =
+        axiosError.response?.data.message ??
+        'There was a problem with your sign-up. Please try again.';
 
-      // Default error message
-      let errorMessage = axiosError.response?.data.message;
-      ('There was a problem with your sign-up. Please try again.');
-
-      toast({
-        title: 'Sign Up Failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-
+      toast.error(errorMessage);
+    } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-800">
+      <Toaster richColors position="top-center" />
       <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
         <div className="text-center">
           <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl mb-6">
@@ -120,11 +108,14 @@ export default function SignUpForm() {
                   <Input
                     {...field}
                     onChange={(e) => {
-                      field.onChange(e);
-                      setUsername(e.target.value);
+                      const value = e.target.value.trim().toLowerCase();
+                      field.onChange(value);
+                      setUsername(value);
                     }}
                   />
-                  {isCheckingUsername && <Loader2 className="animate-spin" />}
+                  {isCheckingUsername && (
+                    <Loader2 className="animate-spin h-4 w-4 mt-2" />
+                  )}
                   {!isCheckingUsername && usernameMessage && (
                     <p
                       className={`text-sm ${
@@ -140,6 +131,7 @@ export default function SignUpForm() {
                 </FormItem>
               )}
             />
+
             <FormField
               name="email"
               control={form.control}
@@ -147,7 +139,9 @@ export default function SignUpForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <Input {...field} name="email" />
-                  <p className='text-muted text-gray-400 text-sm'>We will send you a verification code</p>
+                  <p className="text-muted text-gray-400 text-sm">
+                    We will send you a verification code
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}
@@ -164,7 +158,8 @@ export default function SignUpForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className='w-full' disabled={isSubmitting}>
+
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -188,7 +183,3 @@ export default function SignUpForm() {
     </div>
   );
 }
-function useToast(): { toast: any; } {
-  throw new Error('Function not implemented.');
-}
-

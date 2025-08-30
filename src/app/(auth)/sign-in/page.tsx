@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster, toast } from "sonner";   // ✅ real hook
 import { signInSchema } from '../../../schemas/signinSchema';
 
 export default function SignInForm() {
@@ -29,7 +29,6 @@ export default function SignInForm() {
     },
   });
 
-  const { toast } = useToast();
   const onSubmit = async (data: z.infer<typeof signInSchema>) => {
     const result = await signIn('credentials', {
       redirect: false,
@@ -39,17 +38,9 @@ export default function SignInForm() {
 
     if (result?.error) {
       if (result.error === 'CredentialsSignin') {
-        toast({
-          title: 'Login Failed',
-          description: 'Incorrect username or password',
-          variant: 'destructive',
-        });
+        toast.error('Incorrect username or password');
       } else {
-        toast({
-          title: 'Error',
-          description: result.error,
-          variant: 'destructive',
-        });
+        toast.error(result.error || 'An unknown error occurred');
       }
     }
 
@@ -103,10 +94,7 @@ export default function SignInForm() {
           </p>
         </div>
       </div>
+      <Toaster /> {/* ✅ ensures toasts actually show */}
     </div>
   );
-}
-
-function useToast(): { toast: any; } {
-  throw new Error('Function not implemented.');
 }

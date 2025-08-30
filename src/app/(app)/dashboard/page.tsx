@@ -1,10 +1,10 @@
 'use client';
 
-import { MessageCard } from '@/components/ui/MessageCard';
+import { MessageCard } from '@/components/MessageCard';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster, toast } from "sonner";
 import { Message } from '@/model/User.model';
 import { ApiResponse } from '@/types/ApiResponse';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,98 +21,75 @@ function UserDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSwitchLoading, setIsSwitchLoading] = useState(false);
 
-  const { toast } = useToast();
-
-  const handleDeleteMessage = (messageId: string) => {
-    setMessages(messages.filter((message) => message._id !== messageId));
-  };
-
   const { data: session } = useSession();
 
   const form = useForm({
     resolver: zodResolver(acceptMessageSchema),
+    defaultValues: {
+      acceptMessages: false, // prevent uncontrolled switch issue
+    }
   });
 
   const { register, watch, setValue } = form;
   const acceptMessages = watch('acceptMessages');
 
+  const handleDeleteMessage = (messageId: string) => {
+    setMessages((prev) => prev.filter((message) => message._id !== messageId));
+  };
+
   const fetchAcceptMessages = useCallback(async () => {
     setIsSwitchLoading(true);
     try {
       const response = await axios.get<ApiResponse>('/api/accept-messages');
-      setValue('acceptMessages', response.data.isAcceptingMessage ?? false);
+      setValue('acceptMessages', response.data.isAcceptingMessages ?? false);
     } catch (error) {
       const axiosError = error as AxiosError<ApiResponse>;
-      toast({
-        title: 'Error',
-        description:
-          axiosError.response?.data.message ??
-          'Failed to fetch message settings',
-        variant: 'destructive',
-      });
+      toast.error(axiosError.response?.data.message ?? 'Failed to fetch message settings');
     } finally {
       setIsSwitchLoading(false);
     }
-  }, [setValue, toast]);
+  }, [setValue]);
 
   const fetchMessages = useCallback(
     async (refresh: boolean = false) => {
       setIsLoading(true);
-      setIsSwitchLoading(false);
       try {
         const response = await axios.get<ApiResponse>('/api/get-messages');
-        setMessages(Array.isArray(response.data.message) ? response.data.message : []);
+        setMessages(response.data.messages || []);
         if (refresh) {
-          toast({
-            title: 'Refreshed Messages',
-            description: 'Showing latest messages',
-          });
+          toast.success('Showing latest messages', { description: 'Refreshed Messages' });
         }
       } catch (error) {
         const axiosError = error as AxiosError<ApiResponse>;
-        toast({
-          title: 'Error',
-          description:
-            axiosError.response?.data.message ?? 'Failed to fetch messages',
-          variant: 'destructive',
-        });
+        toast.error(axiosError.response?.data.message ?? 'Failed to fetch messages');
       } finally {
         setIsLoading(false);
-        setIsSwitchLoading(false);
       }
     },
-    [setIsLoading, setMessages, toast]
+    []
   );
 
   // Fetch initial state from the server
   useEffect(() => {
     if (!session || !session.user) return;
-
     fetchMessages();
-
     fetchAcceptMessages();
-  }, [session, setValue, toast, fetchAcceptMessages, fetchMessages]);
+  }, [session, fetchAcceptMessages, fetchMessages]);
 
   // Handle switch change
-  const handleSwitchChange = async () => {
+  const handleSwitchChange = async (checked: boolean) => {
+    setIsSwitchLoading(true);
     try {
       const response = await axios.post<ApiResponse>('/api/accept-messages', {
-        acceptMessages: !acceptMessages,
+        acceptMessages: checked,
       });
-      setValue('acceptMessages', !acceptMessages);
-      toast({
-        title: response.data.message,
-        variant: 'default',
-      });
+      setValue('acceptMessages', checked);
+      toast.success(response.data.message);
     } catch (error) {
       const axiosError = error as AxiosError<ApiResponse>;
-      toast({
-        title: 'Error',
-        description:
-          axiosError.response?.data.message ??
-          'Failed to update message settings',
-        variant: 'destructive',
-      });
+      toast.error(axiosError.response?.data.message ?? 'Failed to update message settings');
+    } finally {
+      setIsSwitchLoading(false);
     }
   };
 
@@ -121,24 +98,24 @@ function UserDashboard() {
   }
 
   const { username } = session.user as User;
-
-  const baseUrl = `${window.location.protocol}//${window.location.host}`;
+  const baseUrl = typeof window !== 'undefined'
+    ? `${window.location.protocol}//${window.location.host}`
+    : '';
   const profileUrl = `${baseUrl}/u/${username}`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(profileUrl);
-    toast({
-      title: 'URL Copied!',
-      description: 'Profile URL has been copied to clipboard.',
-    });
+    toast.success('Profile URL has been copied to clipboard.', { description: 'URL Copied!' });
   };
 
   return (
     <div className="my-8 mx-4 md:mx-8 lg:mx-auto p-6 bg-white rounded w-full max-w-6xl">
+      <Toaster richColors />
+
       <h1 className="text-4xl font-bold mb-4">User Dashboard</h1>
 
       <div className="mb-4">
-        <h2 className="text-lg font-semibold mb-2">Copy Your Unique Link</h2>{' '}
+        <h2 className="text-lg font-semibold mb-2">Copy Your Unique Link</h2>
         <div className="flex items-center">
           <input
             type="text"
@@ -150,9 +127,8 @@ function UserDashboard() {
         </div>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 flex items-center">
         <Switch
-          {...register('acceptMessages')}
           checked={acceptMessages}
           onCheckedChange={handleSwitchChange}
           disabled={isSwitchLoading}
@@ -161,6 +137,7 @@ function UserDashboard() {
           Accept Messages: {acceptMessages ? 'On' : 'Off'}
         </span>
       </div>
+
       <Separator />
 
       <Button
@@ -177,9 +154,10 @@ function UserDashboard() {
           <RefreshCcw className="h-4 w-4" />
         )}
       </Button>
+
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
         {messages.length > 0 ? (
-          messages.map((message, index) => (
+          messages.map((message) => (
             <MessageCard
               key={message._id as string}
               message={message}
@@ -195,7 +173,3 @@ function UserDashboard() {
 }
 
 export default UserDashboard;
-
-function useToast(): { toast: any; } {
-  throw new Error('Function not implemented.');
-}
