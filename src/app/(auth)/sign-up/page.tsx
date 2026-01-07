@@ -87,15 +87,39 @@ export default function SignUpForm() {
     }
   };
 
-  return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-800">
+return (
+  <div className="relative min-h-screen overflow-hidden">
+    {/* 🎥 Background Video */}
+    <video
+      autoPlay
+      loop
+      muted
+      playsInline
+      className="absolute inset-0 h-full w-full object-cover"
+    >
+      <source src="/video/signup.mp4" type="video/mp4" />
+    </video>
+
+   
+    <div className="absolute inset-0 bg-black/60" />
+
+    <div className="relative z-10 flex justify-center items-center min-h-screen">
       <Toaster richColors position="top-center" />
-      <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
+
+      <div
+        className="
+          w-full max-w-md p-8 space-y-8
+          bg-white/90 backdrop-blur-md
+          rounded-xl shadow-2xl
+        "
+      >
         <div className="text-center">
           <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl mb-6">
             Join True Feedback
           </h1>
-          <p className="mb-4">Sign up to start your anonymous adventure</p>
+          <p className="mb-4">
+            Sign up to start your anonymous adventure
+          </p>
         </div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -181,5 +205,6 @@ export default function SignUpForm() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

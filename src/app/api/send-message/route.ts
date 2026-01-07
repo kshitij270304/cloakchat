@@ -3,7 +3,8 @@ import dbConnect from '@/lib/dbConnect';
 
 export async function POST(request: Request) {
   await dbConnect();
-  const { username, content } = await request.json();
+  // 👇 now also receive "sender"
+  const { username, content, sender } = await request.json();
 
   try {
     const user = await UserModel.findOne({ username }).exec();
@@ -22,12 +23,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const newMessage = { content, createdAt: new Date() };
+    // 👇 include sender when creating a new message
+    const newMessage: Partial<Message> = {
+      content,
+      createdAt: new Date(),
+      // sender: sender || 'Anonymous',  // Fallback if sender not provided
+    };
 
-    // Add message
     user.messages.push(newMessage as Message);
 
-    // ✅ Save without revalidating required user fields
     await user.save({ validateBeforeSave: false });
 
     return Response.json(

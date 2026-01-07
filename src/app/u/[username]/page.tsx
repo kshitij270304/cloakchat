@@ -8,7 +8,6 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { CardHeader, CardContent, Card } from '@/components/ui/card';
-// This is the line that was changed
 import { useCompletion } from '@ai-sdk/react';
 import {
   Form,
@@ -68,6 +67,8 @@ export default function SendMessage() {
       const response = await axios.post<ApiResponse>('/api/send-message', {
         ...data,
         username,
+        // 👇 new field: this is what gets saved as message.sender
+        sender: 'Anonymous',
       });
 
       toast(response.data.message);
@@ -170,4 +171,3 @@ export default function SendMessage() {
     </div>
   );
 }
-
