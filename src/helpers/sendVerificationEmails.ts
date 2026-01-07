@@ -18,7 +18,7 @@ export async function sendVerificationEmail(
     console.log("Resend API success:", response);
 
     return { success: true, message: "Verification email sent successfully." };
-  } catch (emailError: any) {
+  } catch (emailError: unknown) {
     console.error(" Resend API error:", JSON.stringify(emailError, null, 2));
     return { success: false, message: "Failed to send verification email." };
   }
