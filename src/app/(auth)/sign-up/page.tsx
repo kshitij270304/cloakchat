@@ -29,9 +29,7 @@ export default function SignUpForm() {
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ✅ Correct debounce usage (array destructuring)
   const [debouncedUsername] = useDebounce(username, 300);
-
   const router = useRouter();
 
   const form = useForm<z.infer<typeof signUpSchema>>({
@@ -45,24 +43,28 @@ export default function SignUpForm() {
 
   useEffect(() => {
     const checkUsernameUnique = async () => {
-      if (debouncedUsername) {
-        setIsCheckingUsername(true);
-        setUsernameMessage('');
-        try {
-          const response = await axios.get<ApiResponse>(
-            `/api/check-username-unique?username=${encodeURIComponent(debouncedUsername)}`
-          );
-          setUsernameMessage(response.data.message ?? '');
-        } catch (error) {
-          const axiosError = error as AxiosError<ApiResponse>;
-          setUsernameMessage(
-            axiosError.response?.data.message ?? 'Error checking username'
-          );
-        } finally {
-          setIsCheckingUsername(false);
-        }
+      if (!debouncedUsername || debouncedUsername.length < 3) return;
+
+      setIsCheckingUsername(true);
+      setUsernameMessage('');
+
+      try {
+        const response = await axios.get<ApiResponse>(
+          `/api/check-username-unique?username=${encodeURIComponent(
+            debouncedUsername
+          )}`
+        );
+        setUsernameMessage(response.data.message || '');
+      } catch (error) {
+        const axiosError = error as AxiosError<ApiResponse>;
+        setUsernameMessage(
+          axiosError.response?.data.message ?? 'Error checking username'
+        );
+      } finally {
+        setIsCheckingUsername(false);
       }
     };
+
     checkUsernameUnique();
   }, [debouncedUsername]);
 
@@ -70,141 +72,121 @@ export default function SignUpForm() {
     setIsSubmitting(true);
     try {
       const response = await axios.post<ApiResponse>('/api/sign-up', data);
-
       toast.success(response.data.message);
-
-      router.replace(`/verify/${username}`);
+      router.replace(`/verify/${data.username}`); // ✅ fixed
     } catch (error) {
-      console.error('Error during sign-up:', error);
       const axiosError = error as AxiosError<ApiResponse>;
-      const errorMessage =
+      toast.error(
         axiosError.response?.data.message ??
-        'There was a problem with your sign-up. Please try again.';
-
-      toast.error(errorMessage);
+          'There was a problem with your sign-up. Please try again.'
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-return (
-  <div className="relative min-h-screen overflow-hidden">
-    {/* 🎥 Background Video */}
-    <video
-      autoPlay
-      loop
-      muted
-      playsInline
-      className="absolute inset-0 h-full w-full object-cover"
-    >
-      <source src="/video/signup.mp4" type="video/mp4" />
-    </video>
-
-   
-    <div className="absolute inset-0 bg-black/60" />
-
-    <div className="relative z-10 flex justify-center items-center min-h-screen">
-      <Toaster richColors position="top-center" />
-
-      <div
-        className="
-          w-full max-w-md p-8 space-y-8
-          bg-white/90 backdrop-blur-md
-          rounded-xl shadow-2xl
-        "
+  return (
+    <div className="relative min-h-screen overflow-hidden">
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 h-full w-full object-cover"
       >
-        <div className="text-center">
-          <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl mb-6">
+        <source src="/video/signup.mp4" type="video/mp4" />
+      </video>
+
+      <div className="absolute inset-0 bg-black/60" />
+
+      <div className="relative z-10 flex justify-center items-center min-h-screen">
+        <Toaster richColors position="top-center" />
+
+        <div className="w-full max-w-md p-8 bg-white/90 backdrop-blur-md rounded-xl shadow-2xl">
+          <h1 className="text-4xl font-extrabold text-center mb-6">
             Join True Feedback
           </h1>
-          <p className="mb-4">
-            Sign up to start your anonymous adventure
-          </p>
-        </div>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              name="username"
-              control={form.control}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Username</FormLabel>
-                  <Input
-                    {...field}
-                    onChange={(e) => {
-                      const value = e.target.value.trim().toLowerCase();
-                      field.onChange(value);
-                      setUsername(value);
-                    }}
-                  />
-                  {isCheckingUsername && (
-                    <Loader2 className="animate-spin h-4 w-4 mt-2" />
-                  )}
-                  {!isCheckingUsername && usernameMessage && (
-                    <p
-                      className={`text-sm ${
-                        usernameMessage === 'Username is unique'
-                          ? 'text-green-500'
-                          : 'text-red-500'
-                      }`}
-                    >
-                      {usernameMessage}
-                    </p>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
-            <FormField
-              name="email"
-              control={form.control}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <Input {...field} name="email" />
-                  <p className="text-muted text-gray-400 text-sm">
-                    We will send you a verification code
-                  </p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                name="username"
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <Input
+                      {...field}
+                      onChange={(e) => {
+                        const value = e.target.value.trim().toLowerCase();
+                        field.onChange(value);
+                        setUsername(value);
+                      }}
+                    />
+                    {isCheckingUsername && (
+                      <Loader2 className="h-4 w-4 animate-spin mt-2" />
+                    )}
+                    {!isCheckingUsername && usernameMessage && (
+                      <p
+                        className={`text-sm ${
+                          usernameMessage === 'Username is unique'
+                            ? 'text-green-500'
+                            : 'text-red-500'
+                        }`}
+                      >
+                        {usernameMessage}
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              name="password"
-              control={form.control}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <Input type="password" {...field} name="password" />
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                name="email"
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <Input {...field} />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Please wait
-                </>
-              ) : (
-                'Sign Up'
-              )}
-            </Button>
-          </form>
-        </Form>
-        <div className="text-center mt-4">
-          <p>
+              <FormField
+                name="password"
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <Input type="password" {...field} />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Please wait
+                  </>
+                ) : (
+                  'Sign Up'
+                )}
+              </Button>
+            </form>
+          </Form>
+
+          <p className="text-center mt-4">
             Already a member?{' '}
-            <Link href="/sign-in" className="text-blue-600 hover:text-blue-800">
+            <Link href="/sign-in" className="text-blue-600 hover:underline">
               Sign in
             </Link>
           </p>
         </div>
       </div>
     </div>
-  </div>
   );
 }
